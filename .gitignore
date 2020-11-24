@@ -1,2 +1,15 @@
 .idea/
 venv/
+build/
+dist/
+pyred.egg-info/
+*pyc
+.DS_Store
+*sandbox*
+ssh_path_private_key
+venv1/
+deploy.sh
+config
+google
+client.json
+google_auth.py
