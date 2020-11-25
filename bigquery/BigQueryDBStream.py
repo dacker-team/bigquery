@@ -3,28 +3,35 @@ import os
 import dbstream
 import time
 import google.cloud.bigquery
+from googleauthentication import GoogleAuthentication
 
 from bigquery.core.Column import change_columns_type
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
-from config.google.google_auth import google_auth
 
 
 class BigQueryDBStream(dbstream.DBStream):
-    def __init__(self, instance_name, client_id):
+    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
+        self.google_auth = google_auth
         self.ssh_init_port = 6543
 
     def connection(self):
         try:
-            con = google.cloud.bigquery.client.Client(project=os.environ["BIG_QUERY_PROJECT_ID"], credentials=google_auth.credentials())
+            con = google.cloud.bigquery.client.Client(
+                project=os.environ["BIG_QUERY_PROJECT_ID"],
+                credentials=self.google_auth.credentials()
+            )
         except google.cloud.bigquery.dbapi.OperationalError:
             time.sleep(2)
             if self.ssh_tunnel:
                 self.ssh_tunnel.close()
                 self.create_tunnel()
-            con = google.cloud.bigquery.client.Client(project=os.environ["BIG_QUERY_PROJECT_ID"], credentials=google_auth.credentials())
+            con = google.cloud.bigquery.client.Client(
+                project=os.environ["BIG_QUERY_PROJECT_ID"],
+                credentials=self.google_auth.credentials()
+            )
         return con
 
     def _execute_query_custom(self, query):
@@ -38,7 +45,7 @@ class BigQueryDBStream(dbstream.DBStream):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
         con = self.connection()
         if replace:
-            cleaning_request = '''DELETE FROM ''' + data["table_name"] +''' WHERE 1=1;'''
+            cleaning_request = '''DELETE FROM ''' + data["table_name"] + ''' WHERE 1=1;'''
             print(C.WARNING + "Cleaning table " + data["table_name"] + C.ENDC)
             self.execute_query(cleaning_request)
             print(C.OKGREEN + "[OK] Cleaning Done" + C.ENDC)
@@ -62,9 +69,12 @@ class BigQueryDBStream(dbstream.DBStream):
 
             if final_data:
                 try:
-                    temp_string = ','.join(map(lambda a: '(' + ','.join(map(lambda b: '%s', a)) + ')', tuple(temp_row))) % tuple(final_data)
+                    temp_string = ','.join(
+                        map(lambda a: "('" + "','".join(map(lambda b: '%s', a)) + "')", tuple(temp_row))) % tuple(
+                        final_data)
                     inserting_request = '''INSERT INTO ''' + data["table_name"] + ''' (''' + ", ".join(
                         data["columns_name"]) + ''') VALUES ''' + temp_string + ''';'''
+                    print(inserting_request)
                     self._execute_query_custom(inserting_request)
                 except Exception as e:
                     raise e
@@ -96,7 +106,7 @@ class BigQueryDBStream(dbstream.DBStream):
         try:
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
-            if "value has type float64 which cannot be inserted into" in str(e).lower() :
+            if "value has type float64 which cannot be inserted into" in str(e).lower():
                 change_columns_type(
                     self,
                     data=data_copy,
@@ -120,7 +130,7 @@ class BigQueryDBStream(dbstream.DBStream):
                 raise e
 
             self._send_data_custom(data_copy, replace=replace, batch_size=batch_size,
-                                other_table_to_update=other_table_to_update)
+                                   other_table_to_update=other_table_to_update)
 
     def clean(self, selecting_id, schema_prefix, table):
         print('trying to clean table %s.%s using %s' % (schema_prefix, table, selecting_id))
