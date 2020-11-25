@@ -1,5 +1,4 @@
 import pandas as pd
-import psycopg2
 
 from bigquery.core.Column import detect_type, find_sample_value
 
@@ -59,13 +58,11 @@ def create_table(_dbstream, data, other_table_to_update):
         if other_table_to_update:
             _dbstream.execute_query(query % {"table_name": other_table_to_update})
     except Exception as e:
-        # if " was not found " in str(e).lower() and " dataset " in str(e).lower():
-        #     _dbstream.execute_query("CREATE DATASET " + data['table_name'].split(".")[0])
-        #     _dbstream.execute_query(query % {"table_name": data["table_name"]})
-        #     if other_table_to_update:
-        #         _dbstream.execute_query(query % {"table_name": other_table_to_update})
-        # else:
-        raise e
+        if " was not found " in str(e).lower() and " dataset " in str(e).lower():
+            schema_name = data['table_name'].split(".")[0]
+            _dbstream.create_schema(schema_name)
+        else:
+            raise e
 
 
 def create_columns(_dbstream, data, other_table_to_update):

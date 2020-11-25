@@ -4,6 +4,7 @@ import dbstream
 import time
 import google.cloud.bigquery
 
+from bigquery.core.Column import change_columns_type
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
 from config.google.google_auth import google_auth
@@ -23,7 +24,7 @@ class BigQueryDBStream(dbstream.DBStream):
             if self.ssh_tunnel:
                 self.ssh_tunnel.close()
                 self.create_tunnel()
-            con = google.cloud.bigquery.client.Client()
+            con = google.cloud.bigquery.client.Client(project=os.environ["BIG_QUERY_PROJECT_ID"], credentials=google_auth.credentials())
         return con
 
     def _execute_query_custom(self, query):
@@ -95,7 +96,13 @@ class BigQueryDBStream(dbstream.DBStream):
         try:
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
-            if " was not found " in str(e).lower() and " table " in str(e).lower():
+            if "value has type float64 which cannot be inserted into" in str(e).lower() :
+                change_columns_type(
+                    self,
+                    data=data_copy,
+                    other_table_to_update=other_table_to_update
+                )
+            elif " was not found " in str(e).lower() and (" table " in str(e).lower() or " dataset " in str(e).lower()):
                 print("Destination table doesn't exist! Will be created")
                 create_table(
                     self,
@@ -109,7 +116,6 @@ class BigQueryDBStream(dbstream.DBStream):
                     data=data_copy,
                     other_table_to_update=other_table_to_update
                 )
-
             else:
                 raise e
 
@@ -122,7 +128,7 @@ class BigQueryDBStream(dbstream.DBStream):
                 DELETE FROM %(schema_name)s.%(table_name)s WHERE %(id)s IN (SELECT distinct %(id)s FROM %(schema_name)s.%(table_name)s_temp);
                 INSERT INTO %(schema_name)s.%(table_name)s 
                 SELECT * FROM %(schema_name)s.%(table_name)s_temp;
-                DELETE FROM %(schema_name)s.%(table_name)s_temp;
+                DELETE FROM %(schema_name)s.%(table_name)s_temp WHERE 1=1;
                 """ % {"table_name": table,
                        "schema_name": schema_prefix,
                        "id": selecting_id}
@@ -138,10 +144,19 @@ class BigQueryDBStream(dbstream.DBStream):
 
     def get_data_type(self, table_name, schema_name):
         query = """ SELECT column_name, data_type FROM %s.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='%s' """ \
-                % (schema_name, schema_name)
+                % (schema_name, table_name)
         return self.execute_query(query=query)
 
     def create_view_from_columns(self, view_name, columns, schema_name, table_name):
-        view_query = '''DROP VIEW IF EXISTS %s ;CREATE VIEW %s as (SELECT %s FROM %s.%s)''' \
-                     % (view_name, view_name, columns, schema_name, table_name)
+        view_query = '''DROP VIEW IF EXISTS %s.%s ;CREATE VIEW %s.%s as (SELECT %s FROM %s.%s)''' \
+                     % (schema_name, view_name, schema_name, view_name, columns, schema_name, table_name)
         self.execute_query(view_query)
+
+    def create_schema(self, schema_name):
+        con = self.connection()
+        dataset = google.cloud.bigquery.Dataset(con.project + "." + schema_name)
+        con.create_dataset(dataset)
+
+    def drop_schema(self, schema_name):
+        con = self.connection()
+        con.delete_dataset(dataset=con.project + "." + schema_name, delete_contents=True, not_found_ok=True)
