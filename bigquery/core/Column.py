@@ -33,6 +33,11 @@ def bool_to_str(_dbstream, table_name, column_name):
     _dbstream.execute_query(query)
     return query
 
+def change_column_value_to_string(column, data):
+    index_column = data["columns_name"].index(column)
+    for row in data["rows"]:
+        row[index_column] = str(row[index_column])
+
 def change_columns_type(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
     columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
@@ -48,7 +53,7 @@ def change_columns_type(_dbstream, data, other_table_to_update):
                 if other_table_to_update:
                     change_type(_dbstream, table_name=data["table_name"], column_name=c, type="FLOAT64")
         if isinstance(example, str):
-            if columns_type.get(c) != "STRING" and columns_type.get(c) != "BOOL":
+            if columns_type.get(c) != "STRING" and columns_type.get(c) != "BOOL" and columns_type.get(c) != "TIMESTAMP":
                 change_type(_dbstream, table_name=data["table_name"], column_name=c, type="STRING")
                 if other_table_to_update:
                     change_type(_dbstream, table_name=data["table_name"], column_name=c, type="STRING")

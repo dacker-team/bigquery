@@ -1,11 +1,14 @@
 import copy
 import os
+import re
+
 import dbstream
 import time
 import google.cloud.bigquery
+from google.cloud.bigquery.dbapi import Cursor
 from googleauthentication import GoogleAuthentication
 
-from bigquery.core.Column import change_columns_type
+from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, change_column_value_to_string
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
 
@@ -35,15 +38,36 @@ class BigQueryDBStream(dbstream.DBStream):
         return con
 
     def _execute_query_custom(self, query):
-        con = self.connection()
-        query_job = con.query(query)
-        r = query_job.result()
-        result = r.to_dataframe().to_dict(orient='records')
-        return result
+        client = self.connection()
+        con = google.cloud.bigquery.dbapi.connect(client=client)
+        cursor = Cursor(con)
+        try:
+            cursor.execute(query)
+        except Exception as e:
+            cursor.close()
+            con.close()
+            raise e
+        con.commit()
+        try:
+            result = cursor.fetchall()
+        except:
+            result = None
+        cursor.close()
+        con.close()
+        query_create_table = re.search("(?i)(?<=((create table ))).*(?= as)", query)
+        if result:
+            return [dict(r) for r in result]
+        elif query_create_table:
+            return {'execute_query': query_create_table}
+        else:
+            empty_list = []
+            return empty_list
 
     def _send(self, data, replace, batch_size=1000):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
-        con = self.connection()
+        client = self.connection()
+        con = google.cloud.bigquery.dbapi.connect(client=client)
+        cursor = Cursor(con)
         if replace:
             cleaning_request = '''DELETE FROM ''' + data["table_name"] + ''' WHERE 1=1;'''
             print(C.WARNING + "Cleaning table " + data["table_name"] + C.ENDC)
@@ -67,16 +91,16 @@ class BigQueryDBStream(dbstream.DBStream):
                 for y in x:
                     final_data.append(y)
 
+            temp_string = ','.join(map(lambda a: '(' + ','.join(map(lambda b: '%s', a)) + ')', tuple(temp_row)))
+
+            inserting_request = '''INSERT INTO ''' + data["table_name"] + ''' (''' + ", ".join(
+                data["columns_name"]) + ''') VALUES ''' + temp_string + ''';'''
             if final_data:
                 try:
-                    temp_string = ','.join(
-                        map(lambda a: "('" + "','".join(map(lambda b: '%s', a)) + "')", tuple(temp_row))) % tuple(
-                        final_data)
-                    inserting_request = '''INSERT INTO ''' + data["table_name"] + ''' (''' + ", ".join(
-                        data["columns_name"]) + ''') VALUES ''' + temp_string + ''';'''
-                    print(inserting_request)
-                    self._execute_query_custom(inserting_request)
+                    cursor.execute(inserting_request, final_data)
                 except Exception as e:
+                    cursor.close()
+                    con.close()
                     raise e
             index = index + 1
             percent = round(index * 100 / total_nb_batches, 2)
@@ -106,8 +130,24 @@ class BigQueryDBStream(dbstream.DBStream):
         try:
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
-            if "value has type float64 which cannot be inserted into" in str(e).lower():
+            if ("value has type float64 which cannot be inserted into" in str(e).lower()
+                or "value has type int64 which cannot be inserted into" in str(e).lower()
+                or "value has type bool which cannot be inserted into" in str(e).lower()) \
+                    and "string" in str(e).lower():
+                column = str(e).split("column ")[1].split(",")[0]
+                change_column_value_to_string(
+                    data=data_copy,
+                    column=column,
+                )
+            elif ("value has type float64 which cannot be inserted into" in str(e).lower() and not "string" in str(e).lower())\
+                    or ("value has type string which cannot be inserted into" in str(e).lower() and not "bool" in str(e).lower()):
                 change_columns_type(
+                    self,
+                    data=data_copy,
+                    other_table_to_update=other_table_to_update
+                )
+            elif "value has type string which cannot be inserted into" in str(e).lower() and "bool" in str(e).lower():
+                columns_type_bool_to_str(
                     self,
                     data=data_copy,
                     other_table_to_update=other_table_to_update
