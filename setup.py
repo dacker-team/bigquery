@@ -5,7 +5,7 @@ with open('README.rst') as f:
 
 setup(
     name='bigquery',
-    version='0.0.3',
+    version='0.0.4',
     description='Easily send data to Big Query',
     long_description=readme,
     author='Dacker',
@@ -18,7 +18,8 @@ setup(
         "dbstream>=0.0.19",
         "google-cloud-bigquery>=2.4.0",
         "googleauthentication>=0.0.11",
-        "google-cloud-bigquery-storage>=2.1.0"
+        "google-cloud-bigquery-storage>=2.1.0",
+        "pandas>=1.1.4"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
