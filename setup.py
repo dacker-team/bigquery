@@ -17,7 +17,7 @@ setup(
     install_requires=[
         "dbstream>=0.0.19",
         "google-cloud-bigquery>=2.4.0",
-        "googleauthentication>=0.0.11",
+        "googleauthentication>=0.0.12",
         "google-cloud-bigquery-storage>=2.1.0",
         "pandas>=1.1.4"
     ],
