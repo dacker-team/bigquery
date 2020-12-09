@@ -19,7 +19,8 @@ setup(
         "google-cloud-bigquery>=2.4.0",
         "googleauthentication>=0.0.12",
         "google-cloud-bigquery-storage>=2.1.0",
-        "pandas>=1.1.4"
+        "pandas>=1.1.4",
+        "pyarrow>=2.0.0"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

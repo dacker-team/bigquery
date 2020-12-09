@@ -8,7 +8,8 @@ import google.cloud.bigquery
 from google.cloud.bigquery.dbapi import Cursor
 from googleauthentication import GoogleAuthentication
 
-from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, change_column_value_to_string
+from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, change_column_value_to_string, \
+    change_column_value_to_int, change_column_value_to_float
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
 
@@ -117,7 +118,8 @@ class BigQueryDBStream(dbstream.DBStream):
                           data,
                           replace=True,
                           batch_size=1000,
-                          other_table_to_update=None
+                          other_table_to_update=None,
+                          n=1
                           ):
         """
         data = {
@@ -130,29 +132,49 @@ class BigQueryDBStream(dbstream.DBStream):
         try:
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
-            if ("value has type float64 which cannot be inserted into" in str(e).lower()
-                or "value has type int64 which cannot be inserted into" in str(e).lower()
-                or "value has type bool which cannot be inserted into" in str(e).lower()) \
-                    and "string" in str(e).lower():
+            error_lowercase = str(e).lower()
+            if ("value has type float64 which cannot be inserted into" in error_lowercase
+                or "value has type int64 which cannot be inserted into" in error_lowercase
+                or "value has type bool which cannot be inserted into" in error_lowercase) \
+                    and "string" in error_lowercase:
                 column = str(e).split("column ")[1].split(",")[0]
                 change_column_value_to_string(
                     data=data_copy,
                     column=column,
                 )
-            elif ("value has type float64 which cannot be inserted into" in str(e).lower() and not "string" in str(e).lower())\
-                    or ("value has type string which cannot be inserted into" in str(e).lower() and not "bool" in str(e).lower()):
-                change_columns_type(
-                    self,
-                    data=data_copy,
-                    other_table_to_update=other_table_to_update
-                )
-            elif "value has type string which cannot be inserted into" in str(e).lower() and "bool" in str(e).lower():
+            elif (
+                    "value has type float64 which cannot be inserted into" in error_lowercase and not "string" in error_lowercase) \
+                    or (
+                    "value has type string which cannot be inserted into" in error_lowercase and not "bool" in error_lowercase):
+                column = str(e).split("column ")[1].split(",")[0]
+                if n == 2:
+                    change_columns_type(
+                        self,
+                        data=data_copy,
+                        other_table_to_update=other_table_to_update
+                    )
+                    n = 1
+                else:
+                    if "which has type int" in error_lowercase:
+                        change_column_value_to_int(
+                            data=data_copy,
+                            column=column,
+                        )
+                    elif "which has type float" in error_lowercase:
+                        change_column_value_to_float(
+                            data=data_copy,
+                            column=column,
+                        )
+                    n = 2
+
+            elif "value has type string which cannot be inserted into" in error_lowercase and "bool" in error_lowercase:
                 columns_type_bool_to_str(
                     self,
                     data=data_copy,
                     other_table_to_update=other_table_to_update
                 )
-            elif " was not found " in str(e).lower() and (" table " in str(e).lower() or " dataset " in str(e).lower()):
+            elif " was not found " in error_lowercase and (
+                    " table " in error_lowercase or " dataset " in error_lowercase):
                 print("Destination table doesn't exist! Will be created")
                 create_table(
                     self,
@@ -160,7 +182,7 @@ class BigQueryDBStream(dbstream.DBStream):
                     other_table_to_update=other_table_to_update
                 )
                 replace = False
-            elif " is not present in table " in str(e).lower() and "column" in str(e).lower():
+            elif " is not present in table " in error_lowercase and "column" in error_lowercase:
                 create_columns(
                     self,
                     data=data_copy,
@@ -170,7 +192,7 @@ class BigQueryDBStream(dbstream.DBStream):
                 raise e
 
             self._send_data_custom(data_copy, replace=replace, batch_size=batch_size,
-                                   other_table_to_update=other_table_to_update)
+                                   other_table_to_update=other_table_to_update, n=n)
 
     def clean(self, selecting_id, schema_prefix, table):
         print('trying to clean table %s.%s using %s' % (schema_prefix, table, selecting_id))

@@ -2,12 +2,14 @@ import copy
 import datetime
 import pandas as pd
 
+
 def get_columns_type(_dbstream, schema_name, table_name):
     d = {}
     r = _dbstream.get_data_type(table_name, schema_name)
     for i in r:
         d[i["column_name"]] = i["data_type"]
     return d
+
 
 def change_type(_dbstream, table_name, column_name, type):
     query = """
@@ -21,6 +23,7 @@ def change_type(_dbstream, table_name, column_name, type):
     _dbstream.execute_query(query)
     return query
 
+
 def bool_to_str(_dbstream, table_name, column_name):
     query = """
         CREATE OR REPLACE TABLE %(table_name)s AS 
@@ -33,10 +36,30 @@ def bool_to_str(_dbstream, table_name, column_name):
     _dbstream.execute_query(query)
     return query
 
+
 def change_column_value_to_string(column, data):
     index_column = data["columns_name"].index(column)
     for row in data["rows"]:
         row[index_column] = str(row[index_column])
+
+
+def change_column_value_to_int(column, data):
+    index_column = data["columns_name"].index(column)
+    for row in data["rows"]:
+        try:
+            row[index_column] = int(row[index_column])
+        except:
+            pass
+
+
+def change_column_value_to_float(column, data):
+    index_column = data["columns_name"].index(column)
+    for row in data["rows"]:
+        try:
+            row[index_column] = float(row[index_column])
+        except:
+            pass
+
 
 def change_columns_type(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
@@ -58,6 +81,7 @@ def change_columns_type(_dbstream, data, other_table_to_update):
                 if other_table_to_update:
                     change_type(_dbstream, table_name=data["table_name"], column_name=c, type="STRING")
 
+
 def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
     columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
@@ -72,6 +96,7 @@ def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
                 bool_to_str(_dbstream, table_name=data["table_name"], column_name=c)
                 if other_table_to_update:
                     bool_to_str(_dbstream, table_name=other_table_to_update, column_name=c)
+
 
 def detect_type(_dbstream, name, example):
     print('Define type of %s...' % name)
@@ -92,6 +117,7 @@ def detect_type(_dbstream, name, example):
     else:
         return "STRING"
 
+
 def convert_to_bool(x):
     if x.lower() == "true" or x == 1 or x.lower() == "t":
         return True
@@ -100,16 +126,19 @@ def convert_to_bool(x):
     else:
         raise Exception
 
+
 def convert_to_int(x):
     if x[-2:] == ".0":
-        return int(x.replace(".0",""))
+        return int(x.replace(".0", ""))
     else:
         return int(x)
+
 
 def len_or_max(s):
     if isinstance(s, str):
         return len(s)
     return s
+
 
 def find_sample_value(df, name, i):
     df1 = df[name].dropna()
@@ -133,7 +162,8 @@ def find_sample_value(df, name, i):
         if df1.empty:
             return None, None
         else:
-            return df1_copy[df1.map(len_or_max) == df1.map(len_or_max).max()].iloc[0], df1_copy[df1.map(len_or_max) == df1.map(len_or_max).min()].iloc[0]
+            return df1_copy[df1.map(len_or_max) == df1.map(len_or_max).max()].iloc[0], \
+                   df1_copy[df1.map(len_or_max) == df1.map(len_or_max).min()].iloc[0]
     elif df1.dtype == 'int64':
         max = int(df1.max())
         min = int(df1.min())
