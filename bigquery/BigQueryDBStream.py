@@ -1,4 +1,5 @@
 import copy
+import datetime
 import os
 import re
 
@@ -12,7 +13,7 @@ from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, 
     change_column_value_to_int, change_column_value_to_float
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
-
+import logging
 
 class BigQueryDBStream(dbstream.DBStream):
     def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication):
@@ -90,6 +91,16 @@ class BigQueryDBStream(dbstream.DBStream):
             final_data = []
             for x in temp_row:
                 for y in x:
+                    if not isinstance(y, bool) \
+                            and not isinstance(y, datetime.date) \
+                            and not isinstance(y, datetime.datetime):
+                        try:
+                            y = int(y)
+                        except:
+                            try:
+                                y = float(y)
+                            except:
+                                pass
                     final_data.append(y)
 
             temp_string = ','.join(map(lambda a: '(' + ','.join(map(lambda b: '%s', a)) + ')', tuple(temp_row)))
@@ -133,6 +144,7 @@ class BigQueryDBStream(dbstream.DBStream):
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
             error_lowercase = str(e).lower()
+            logging.log(error_lowercase.split("\n")[0])
             if ("value has type float64 which cannot be inserted into" in error_lowercase
                 or "value has type int64 which cannot be inserted into" in error_lowercase
                 or "value has type bool which cannot be inserted into" in error_lowercase) \
@@ -209,6 +221,7 @@ class BigQueryDBStream(dbstream.DBStream):
 
     def get_max(self, schema, table, field, filter_clause=""):
         try:
+            print("SELECT max(%s) as max FROM %s.%s %s" % (field, schema, table, filter_clause))
             r = self.execute_query("SELECT max(%s) as max FROM %s.%s %s" % (field, schema, table, filter_clause))
             return r[0]["max"]
         except Exception as e:
