@@ -225,6 +225,8 @@ class BigQueryDBStream(dbstream.DBStream):
             r = self.execute_query("SELECT max(%s) as max FROM %s.%s %s" % (field, schema, table, filter_clause))
             return r[0]["max"]
         except Exception as e:
+            if "was not found" in str(e):
+                return None
             raise e
 
     def get_data_type(self, table_name, schema_name):
