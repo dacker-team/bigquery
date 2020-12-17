@@ -113,6 +113,7 @@ class BigQueryDBStream(dbstream.DBStream):
             autodetect=True,
             write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND"
         )
+        job_config._properties['load']['schemaUpdateOptions'] = ['ALLOW_FIELD_ADDITION']
         table_id = os.environ["BIG_QUERY_PROJECT_ID"] + "." + data["table_name"]
 
         with open(file_path, "rb") as source_file:
