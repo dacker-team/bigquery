@@ -6,14 +6,18 @@ import re
 import dbstream
 import time
 import google.cloud.bigquery
+import pandas as pd
+from google.cloud import bigquery
+from google.cloud.bigquery import QueryJobConfig, LoadJobConfig, SchemaField
 from google.cloud.bigquery.dbapi import Cursor
 from googleauthentication import GoogleAuthentication
 
 from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, change_column_value_to_string, \
-    change_column_value_to_int, change_column_value_to_float
+    change_column_value_to_int, change_column_value_to_float, find_sample_value, detect_type
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
 import logging
+
 
 class BigQueryDBStream(dbstream.DBStream):
     def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication):
@@ -67,59 +71,61 @@ class BigQueryDBStream(dbstream.DBStream):
 
     def _send(self, data, replace, batch_size=1000):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
-        client = self.connection()
-        con = google.cloud.bigquery.dbapi.connect(client=client)
-        cursor = Cursor(con)
+
         if replace:
-            cleaning_request = '''DELETE FROM ''' + data["table_name"] + ''' WHERE 1=1;'''
-            print(C.WARNING + "Cleaning table " + data["table_name"] + C.ENDC)
-            self.execute_query(cleaning_request)
-            print(C.OKGREEN + "[OK] Cleaning Done" + C.ENDC)
+            print(C.WARNING + "Table will be cleaned: " + data["table_name"] + C.ENDC)
 
-        boolean = True
-        index = 0
         total_rows = len(data["rows"])
-        total_nb_batches = len(data["rows"]) // batch_size + 1
-        while boolean:
-            temp_row = []
-            for i in range(batch_size):
-                if not data["rows"]:
-                    boolean = False
-                    continue
-                temp_row.append(data["rows"].pop())
 
-            final_data = []
-            for x in temp_row:
-                for y in x:
-                    if not isinstance(y, bool) \
-                            and not isinstance(y, datetime.date) \
-                            and not isinstance(y, datetime.datetime):
-                        try:
-                            y = int(y)
-                        except:
-                            try:
-                                y = float(y)
-                            except:
-                                pass
-                    final_data.append(y)
+        # Construct a BigQuery client object.
+        client = self.connection()
+        columns_name = data["columns_name"]
 
-            temp_string = ','.join(map(lambda a: '(' + ','.join(map(lambda b: '%s', a)) + ')', tuple(temp_row)))
+        df = pd.DataFrame(data["rows"], columns=columns_name)
+        file_path = "./tmp.csv"
+        df.to_csv(file_path, index=False)
 
-            inserting_request = '''INSERT INTO ''' + data["table_name"] + ''' (''' + ", ".join(
-                data["columns_name"]) + ''') VALUES ''' + temp_string + ''';'''
-            if final_data:
-                try:
-                    cursor.execute(inserting_request, final_data)
-                except Exception as e:
-                    cursor.close()
-                    con.close()
-                    raise e
-            index = index + 1
-            percent = round(index * 100 / total_nb_batches, 2)
-            if percent < 100:
-                print("\r   %s / %s (%s %%)" % (str(index), total_nb_batches, str(percent)), end='\r')
+        params = {}
+        df = df.where((pd.notnull(df)), None)
+        for i in range(len(columns_name)):
+            name = columns_name[i]
+            example_max, example_min = find_sample_value(df, name, i)
+            col = dict()
+            col["example"] = example_max
+            type_max = detect_type(self, name=name, example=example_max)
+            if type_max == "TIMESTAMP":
+                type_min = detect_type(self, name=name, example=example_min)
+                if type_min == type_max:
+                    col["type"] = type_max
+                else:
+                    col["type"] = type_min
             else:
-                print("\r   %s / %s (%s %%)" % (str(index), total_nb_batches, str(percent)))
+                col["type"] = type_max
+            params[name] = col
+
+        schema = [
+            SchemaField(name=c, field_type=params[c]["type"]) for c in params.keys()
+        ]
+        job_config = bigquery.LoadJobConfig(
+            source_format=bigquery.SourceFormat.CSV,
+            skip_leading_rows=1,
+            schema=schema,
+            autodetect=True,
+            write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND"
+        )
+        table_id = os.environ["BIG_QUERY_PROJECT_ID"] + "." + data["table_name"]
+
+        with open(file_path, "rb") as source_file:
+            job = client.load_table_from_file(source_file, table_id, job_config=job_config)
+
+        job.result()  # Waits for the job to complete.
+
+        table = client.get_table(table_id)  # Make an API request.
+        print(
+            "Loaded {} rows and {} columns to {}".format(
+                table.num_rows, len(table.schema), table_id
+            )
+        )
 
         print(C.HEADER + str(total_rows) + ' rows sent to BigQuery table ' + data["table_name"] + C.ENDC)
         print(C.OKGREEN + "[OK] Sent to bigquery" + C.ENDC)
@@ -144,7 +150,7 @@ class BigQueryDBStream(dbstream.DBStream):
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
             error_lowercase = str(e).lower()
-            logging.log(error_lowercase.split("\n")[0])
+            logging.info(error_lowercase.split("\n")[0])
             if ("value has type float64 which cannot be inserted into" in error_lowercase
                 or "value has type int64 which cannot be inserted into" in error_lowercase
                 or "value has type bool which cannot be inserted into" in error_lowercase) \

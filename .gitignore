@@ -13,3 +13,4 @@ config
 google
 client.json
 google_auth.py
+*.csv
