@@ -9,7 +9,7 @@ bigquery.egg-info/
 ssh_path_private_key
 venv1/
 deploy.sh
-config
+config/
 google
 client.json
 google_auth.py
