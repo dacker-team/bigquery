@@ -1,5 +1,4 @@
 import copy
-import datetime
 import pandas as pd
 
 
@@ -23,7 +22,6 @@ def change_type(_dbstream, table_name, column_name, type):
     _dbstream.execute_query(query)
     return query
 
-
 def bool_to_str(_dbstream, table_name, column_name):
     query = """
         CREATE OR REPLACE TABLE %(table_name)s AS 
@@ -36,31 +34,6 @@ def bool_to_str(_dbstream, table_name, column_name):
     _dbstream.execute_query(query)
     return query
 
-
-def change_column_value_to_string(column, data):
-    index_column = data["columns_name"].index(column)
-    for row in data["rows"]:
-        row[index_column] = str(row[index_column])
-
-
-def change_column_value_to_int(column, data):
-    index_column = data["columns_name"].index(column)
-    for row in data["rows"]:
-        try:
-            row[index_column] = int(row[index_column])
-        except:
-            pass
-
-
-def change_column_value_to_float(column, data):
-    index_column = data["columns_name"].index(column)
-    for row in data["rows"]:
-        try:
-            row[index_column] = float(row[index_column])
-        except:
-            pass
-
-
 def change_columns_type(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
     columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
@@ -71,15 +44,15 @@ def change_columns_type(_dbstream, data, other_table_to_update):
     for c in columns_name:
         example = find_sample_value(df, c, columns_name.index(c))[0]
         if isinstance(example, float):
-            if columns_type.get(c) != "FLOAT64":
+            if columns_type.get(c) != "FLOAT64" and columns_type.get(c) != "STRING":
                 change_type(_dbstream, table_name=data["table_name"], column_name=c, type="FLOAT64")
                 if other_table_to_update:
-                    change_type(_dbstream, table_name=data["table_name"], column_name=c, type="FLOAT64")
+                    change_type(_dbstream, table_name=other_table_to_update, column_name=c, type="FLOAT64")
         if isinstance(example, str):
             if columns_type.get(c) != "STRING" and columns_type.get(c) != "BOOL" and columns_type.get(c) != "TIMESTAMP":
                 change_type(_dbstream, table_name=data["table_name"], column_name=c, type="STRING")
                 if other_table_to_update:
-                    change_type(_dbstream, table_name=data["table_name"], column_name=c, type="STRING")
+                    change_type(_dbstream, table_name=other_table_to_update, column_name=c, type="STRING")
 
 
 def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
@@ -101,14 +74,17 @@ def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
 def detect_type(_dbstream, name, example):
     print('Define type of %s...' % name)
     try:
-        query = "SELECT CAST('%s' as TIMESTAMP)" % example
+        query = "SELECT CAST('%s' as DATE)" % example
         _dbstream.execute_query(query)
-        return "TIMESTAMP"
+        return "DATE"
     except:
-        pass
-    if isinstance(example, datetime.date):
-        return "TIMESTAMP"
-    elif isinstance(example, bool):
+        try:
+            query = "SELECT CAST('%s' as TIMESTAMP)" % example
+            _dbstream.execute_query(query)
+            return "TIMESTAMP"
+        except:
+            pass
+    if isinstance(example, bool):
         return "BOOL"
     elif isinstance(example, int):
         return "INT64"
