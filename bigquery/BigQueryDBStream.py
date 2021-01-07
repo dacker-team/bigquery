@@ -8,15 +8,13 @@ import time
 import google.cloud.bigquery
 import pandas as pd
 from google.cloud import bigquery
-from google.cloud.bigquery import QueryJobConfig, LoadJobConfig, SchemaField
+from google.cloud.bigquery import SchemaField
 from google.cloud.bigquery.dbapi import Cursor
 from googleauthentication import GoogleAuthentication
-
 from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, \
     find_sample_value, detect_type, get_columns_type
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
-import logging
 
 
 class BigQueryDBStream(dbstream.DBStream):
@@ -82,6 +80,7 @@ class BigQueryDBStream(dbstream.DBStream):
         columns_name = data["columns_name"]
 
         df = pd.DataFrame(data["rows"], columns=columns_name)
+
         file_path = "./%s.csv" % data["table_name"].replace('.', '_')
         df.to_csv(file_path, index=False)
 
@@ -121,6 +120,7 @@ class BigQueryDBStream(dbstream.DBStream):
             skip_leading_rows=1,
             schema=schema,
             autodetect=True,
+            allow_quoted_newlines=True,
             write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND"
         )
 

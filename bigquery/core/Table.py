@@ -10,7 +10,8 @@ def get_table_info(_dbstream, table_and_schema_name):
         schema_name = split[0]
     else:
         raise Exception("Invalid table or schema name")
-    query = "SELECT column_name, data_type, is_nullable FROM %s.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='%s'" % (schema_name,table_name)
+    query = "SELECT column_name, data_type, is_nullable FROM %s.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='%s'" % (
+        schema_name, table_name)
     return _dbstream.execute_query(query)
 
 
@@ -73,12 +74,16 @@ def create_columns(_dbstream, data, other_table_to_update):
     all_column_in_table = [e['column_name'] for e in infos]
     df = pd.DataFrame(rows, columns=columns_name)
     df = df.where((pd.notnull(df)), None)
-    queries = []
+    query_table = "alter table %s \n" % table_name
+    if other_table_to_update:
+        query_other_table = "alter table %s \n" % other_table_to_update
+    queries_table = []
+    queries_other_table = []
     for column_name in columns_name:
         if column_name not in all_column_in_table:
             example_max, example_min = find_sample_value(df, column_name, columns_name.index(column_name))
             type_max = detect_type(_dbstream, name=column_name, example=example_max)
-            if type_max =="TIMESTAMP":
+            if type_max == "TIMESTAMP":
                 type_min = detect_type(_dbstream, name=column_name, example=example_min)
                 if type_min == type_max:
                     type_ = type_max
@@ -87,17 +92,16 @@ def create_columns(_dbstream, data, other_table_to_update):
             else:
                 type_ = type_max
             query = """
-            alter table %s
             add COLUMN %s %s
-            """ % (table_name, column_name, type_)
-            queries.append(query)
+            """ % (column_name, type_)
+            queries_table.append(query)
             if other_table_to_update:
-                query = """
-                            alter table %s
-                            add COLUMN %s %s
-                            """ % (other_table_to_update, column_name, type_)
-                queries.append(query)
-    if queries:
-        query = '; '.join(queries)
+                query = """add COLUMN %s %s""" % (column_name, type_)
+                queries_other_table.append(query)
+    if queries_table:
+        query = query_table + ',\n '.join(queries_table) + ";"
+        _dbstream.execute_query(query)
+    if queries_other_table:
+        query = query_other_table + ',\n '.join(queries_other_table) + ";"
         _dbstream.execute_query(query)
     return 0

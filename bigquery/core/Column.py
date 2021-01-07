@@ -22,6 +22,7 @@ def change_type(_dbstream, table_name, column_name, type):
     _dbstream.execute_query(query)
     return query
 
+
 def bool_to_str(_dbstream, table_name, column_name):
     query = """
         CREATE OR REPLACE TABLE %(table_name)s AS 
@@ -29,10 +30,10 @@ def bool_to_str(_dbstream, table_name, column_name):
         """ % {
         "table_name": table_name,
         "column_name": column_name,
-        "type": type
     }
     _dbstream.execute_query(query)
     return query
+
 
 def change_columns_type(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
