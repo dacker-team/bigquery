@@ -100,9 +100,9 @@ class BigQueryDBStream(dbstream.DBStream):
             example_max, example_min = find_sample_value(df, name, i)
             col = dict()
             col["example"] = example_max
-            type_max = detect_type(self, name=name, example=example_max)
+            type_max = detect_type(self, name=name, example=example_max, types=data.get("types"))
             if type_max == "TIMESTAMP" or type_max == "DATE":
-                type_min = detect_type(self, name=name, example=example_min)
+                type_min = detect_type(self, name=name, example=example_min, types=data.get("types"))
                 if type_min == type_max:
                     col["type"] = type_max
                 else:

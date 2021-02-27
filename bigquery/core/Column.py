@@ -1,6 +1,8 @@
 import copy
 import pandas as pd
 
+from bigquery.core.mapping_type import mapping_type
+
 
 def get_columns_type(_dbstream, schema_name, table_name):
     d = {}
@@ -72,8 +74,15 @@ def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
                     bool_to_str(_dbstream, table_name=other_table_to_update, column_name=c)
 
 
-def detect_type(_dbstream, name, example):
+def detect_type(_dbstream, name, example, types):
     print('Define type of %s...' % name)
+    if types and types.get(name):
+        try:
+            return mapping_type[types.get(name)]
+        except KeyError:
+            raise Exception(
+                "Type %s missing in mapping_types dictionnart dbstream types <> big query type" % types.get(name)
+            )
     try:
         query = "SELECT CAST('%s' as DATE)" % example
         _dbstream.execute_query(query)
