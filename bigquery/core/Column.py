@@ -81,7 +81,7 @@ def detect_type(_dbstream, name, example, types):
             return mapping_type[types.get(name)]
         except KeyError:
             raise Exception(
-                "Type %s missing in mapping_types dictionnart dbstream types <> big query type" % types.get(name)
+                "Type %s missing in mapping_types dictionary [dbstream types] <> [big query types]" % types.get(name)
             )
     try:
         query = "SELECT CAST('%s' as DATE)" % example

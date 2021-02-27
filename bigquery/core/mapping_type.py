@@ -1,6 +1,6 @@
 mapping_type = {
     "VARCHAR": "VARCHAR",
-    # "FLOAT": "FLOAT",
+    "FLOAT": "FLOAT",
     "INT": "INT",
     "DATETIME": "DATETIME"
 }
