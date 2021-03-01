@@ -1,7 +1,7 @@
 import copy
 import pandas as pd
 
-from bigquery.core.mapping_type import mapping_type
+from bigquery.core.mapping_type import mapping_types
 
 
 def get_columns_type(_dbstream, schema_name, table_name):
@@ -78,7 +78,7 @@ def detect_type(_dbstream, name, example, types):
     print('Define type of %s...' % name)
     if types and types.get(name):
         try:
-            return mapping_type[types.get(name)]
+            return mapping_types[types.get(name)]
         except KeyError:
             raise Exception(
                 "Type %s missing in mapping_types dictionary [dbstream types] <> [big query types]" % types.get(name)
