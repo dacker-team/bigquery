@@ -18,11 +18,12 @@ from bigquery.core.Table import create_table, create_columns
 
 
 class BigQueryDBStream(dbstream.DBStream):
-    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication):
+    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication, dataset_location):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
         self.ssh_init_port = 6543
+        self.dataset_location = dataset_location
 
     def connection(self):
         try:
@@ -233,6 +234,7 @@ class BigQueryDBStream(dbstream.DBStream):
     def create_schema(self, schema_name):
         con = self.connection()
         dataset = google.cloud.bigquery.Dataset(con.project + "." + schema_name)
+        dataset.location = self.dataset_location
         con.create_dataset(dataset)
 
     def drop_schema(self, schema_name):
