@@ -18,12 +18,13 @@ from bigquery.core.Table import create_table, create_columns
 
 
 class BigQueryDBStream(dbstream.DBStream):
-    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication, dataset_location):
+    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication, dataset_location=None, file_path="./"):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
         self.ssh_init_port = 6543
         self.dataset_location = dataset_location
+        self.file_path = file_path
 
     def connection(self):
         try:
@@ -82,7 +83,7 @@ class BigQueryDBStream(dbstream.DBStream):
 
         df = pd.DataFrame(data["rows"], columns=columns_name)
 
-        file_path = "./%s.csv" % data["table_name"].replace('.', '_')
+        file_path = self.file_path + "%s.csv" % data["table_name"].replace('.', '_')
         df.to_csv(file_path, index=False)
 
         params = {}
@@ -234,7 +235,8 @@ class BigQueryDBStream(dbstream.DBStream):
     def create_schema(self, schema_name):
         con = self.connection()
         dataset = google.cloud.bigquery.Dataset(con.project + "." + schema_name)
-        dataset.location = self.dataset_location
+        if self.dataset_location:
+            dataset.location = self.dataset_location
         con.create_dataset(dataset)
 
     def drop_schema(self, schema_name):
