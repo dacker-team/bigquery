@@ -18,13 +18,18 @@ from bigquery.core.Table import create_table, create_columns
 
 
 class BigQueryDBStream(dbstream.DBStream):
-    def __init__(self, instance_name, client_id, google_auth: GoogleAuthentication, dataset_location=None, file_path="./"):
+    def __init__(self,
+                 instance_name,
+                 client_id,
+                 google_auth: GoogleAuthentication,
+                 dataset_location=None,
+                 tmp_folder_path="./"):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
         self.ssh_init_port = 6543
         self.dataset_location = dataset_location
-        self.file_path = file_path
+        self.tmp_folder_path = tmp_folder_path
 
     def connection(self):
         try:
@@ -83,8 +88,8 @@ class BigQueryDBStream(dbstream.DBStream):
 
         df = pd.DataFrame(data["rows"], columns=columns_name)
 
-        file_path = self.file_path + "%s.csv" % data["table_name"].replace('.', '_')
-        df.to_csv(file_path, index=False)
+        tmp_csv_path = self.tmp_folder_path + "%s.csv" % data["table_name"].replace('.', '_')
+        df.to_csv(tmp_csv_path, index=False)
 
         params = {}
         df = df.where((pd.notnull(df)), None)
@@ -128,7 +133,7 @@ class BigQueryDBStream(dbstream.DBStream):
 
         table_id = os.environ["BIG_QUERY_PROJECT_ID"] + "." + data["table_name"]
 
-        with open(file_path, "rb") as source_file:
+        with open(tmp_csv_path, "rb") as source_file:
             job = client.load_table_from_file(source_file, table_id, job_config=job_config)
 
         job.result()  # Waits for the job to complete.
@@ -142,8 +147,8 @@ class BigQueryDBStream(dbstream.DBStream):
 
         print(C.HEADER + str(total_rows) + ' rows sent to BigQuery table ' + data["table_name"] + C.ENDC)
         print(C.OKGREEN + "[OK] Sent to bigquery" + C.ENDC)
-        os.remove(file_path)
-        print(C.OKGREEN + "[OK] " + file_path + " deleted" + C.ENDC)
+        os.remove(tmp_csv_path)
+        print(C.OKGREEN + "[OK] " + tmp_csv_path + " deleted" + C.ENDC)
         return 0
 
     def _send_data_custom(self,
