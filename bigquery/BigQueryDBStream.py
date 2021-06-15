@@ -1,6 +1,7 @@
 import copy
 import datetime
 import os
+import random
 import re
 
 import dbstream
@@ -88,7 +89,8 @@ class BigQueryDBStream(dbstream.DBStream):
 
         df = pd.DataFrame(data["rows"], columns=columns_name)
 
-        tmp_csv_path = self.tmp_folder_path + "%s.csv" % data["table_name"].replace('.', '_')
+        randint = str(random.randrange(1000000))
+        tmp_csv_path = self.tmp_folder_path + randint + "%s.csv" % data["table_name"].replace('.', '_')
         df.to_csv(tmp_csv_path, index=False)
 
         params = {}
