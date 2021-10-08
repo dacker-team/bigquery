@@ -44,9 +44,9 @@ def format_create_table(_dbstream, data):
         k = col[i]
         string_example = " --example:" + str(params[k]["example"])[:10].replace("\n", "").replace("%", "") + ''
         if i == len(col) - 1:
-            query = query + "\n     " + k + ' ' + params[k]["type"] + string_example
+            query = query + "\n     `" + k + '` ' + params[k]["type"] + string_example
         else:
-            query = query + "\n     " + k + ' ' + params[k]["type"] + ',' + string_example
+            query = query + "\n     `" + k + '` ' + params[k]["type"] + ',' + string_example
     query = query + "\n )"
     print(query)
     return query
