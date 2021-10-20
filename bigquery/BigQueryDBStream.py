@@ -1,9 +1,7 @@
 import copy
-import datetime
 import os
 import random
 import re
-
 import dbstream
 import time
 import google.cloud.bigquery
@@ -16,6 +14,7 @@ from bigquery.core.Column import change_columns_type, columns_type_bool_to_str, 
     find_sample_value, detect_type, get_columns_type
 from bigquery.core.tools.print_colors import C
 from bigquery.core.Table import create_table, create_columns
+from google.cloud.bigquery.job import QueryJobConfig, ScriptOptions
 
 
 class BigQueryDBStream(dbstream.DBStream):
@@ -54,7 +53,7 @@ class BigQueryDBStream(dbstream.DBStream):
         con = google.cloud.bigquery.dbapi.connect(client=client)
         cursor = Cursor(con)
         try:
-            cursor.execute(query)
+            cursor.execute(query, job_config=QueryJobConfig(script_options=ScriptOptions(statement_timeout_ms=120000)))
         except Exception as e:
             cursor.close()
             con.close()
