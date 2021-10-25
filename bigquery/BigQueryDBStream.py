@@ -63,7 +63,7 @@ class BigQueryDBStream(dbstream.DBStream):
             result = cursor.fetchall()
         except AttributeError:
             result = None
-        else:
+        except:
             raise
         cursor.close()
         con.close()
