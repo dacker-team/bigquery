@@ -61,8 +61,10 @@ class BigQueryDBStream(dbstream.DBStream):
         con.commit()
         try:
             result = cursor.fetchall()
-        except:
+        except AttributeError:
             result = None
+        else:
+            raise
         cursor.close()
         con.close()
         query_create_table = re.search("(?i)(?<=((create table ))).*(?= as)", query)
