@@ -23,13 +23,15 @@ class BigQueryDBStream(dbstream.DBStream):
                  client_id,
                  google_auth: GoogleAuthentication,
                  dataset_location=None,
-                 tmp_folder_path="./"):
+                 tmp_folder_path="./",
+                 id_info='dck'):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
         self.ssh_init_port = 6543
         self.dataset_location = dataset_location
         self.tmp_folder_path = tmp_folder_path
+        self.id_info = id_info
 
     def connection(self):
         try:
