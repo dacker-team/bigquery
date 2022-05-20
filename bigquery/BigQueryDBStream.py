@@ -252,3 +252,21 @@ class BigQueryDBStream(dbstream.DBStream):
     def drop_schema(self, schema_name):
         con = self.connection()
         con.delete_dataset(dataset=con.project + "." + schema_name, delete_contents=True, not_found_ok=True)
+
+    @staticmethod
+    def build_pydatasource_view(query_string):
+        return """
+                    drop view if exists {{ table_name }};
+                    create view {{ table_name }} as (
+                    %s
+                    );
+                    """ % query_string
+
+    @staticmethod
+    def build_pydatasource_table(query_string):
+        return """
+                    drop table if exists {{ table_name }};
+                    create table {{ table_name }} as (
+                    %s
+                    );
+                    """ % query_string
