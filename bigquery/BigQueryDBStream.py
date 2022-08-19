@@ -37,7 +37,7 @@ class BigQueryDBStream(dbstream.DBStream):
 
     def connection(self):
         if self.custom_connection:
-            return self.custom_connection
+            return self.custom_connection()
         else:
             try:
                 con = google.cloud.bigquery.client.Client(
