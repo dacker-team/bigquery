@@ -24,7 +24,8 @@ class BigQueryDBStream(dbstream.DBStream):
                  google_auth: GoogleAuthentication,
                  dataset_location=None,
                  tmp_folder_path="./",
-                 id_info='dck'):
+                 id_info='dck',
+                 custom_connection=None):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
@@ -32,23 +33,27 @@ class BigQueryDBStream(dbstream.DBStream):
         self.dataset_location = dataset_location
         self.tmp_folder_path = tmp_folder_path
         self.id_info = id_info
+        self.custom_connection = custom_connection
 
     def connection(self):
-        try:
-            con = google.cloud.bigquery.client.Client(
-                project=os.environ["BIG_QUERY_PROJECT_ID"],
-                credentials=self.google_auth.credentials()
-            )
-        except google.cloud.bigquery.dbapi.OperationalError:
-            time.sleep(2)
-            if self.ssh_tunnel:
-                self.ssh_tunnel.close()
-                self.create_tunnel()
-            con = google.cloud.bigquery.client.Client(
-                project=os.environ["BIG_QUERY_PROJECT_ID"],
-                credentials=self.google_auth.credentials()
-            )
-        return con
+        if self.custom_connection:
+            return self.custom_connection()
+        else:
+            try:
+                con = google.cloud.bigquery.client.Client(
+                    project=os.environ["BIG_QUERY_PROJECT_ID"],
+                    credentials=self.google_auth.credentials()
+                )
+            except google.cloud.bigquery.dbapi.OperationalError:
+                time.sleep(2)
+                if self.ssh_tunnel:
+                    self.ssh_tunnel.close()
+                    self.create_tunnel()
+                con = google.cloud.bigquery.client.Client(
+                    project=os.environ["BIG_QUERY_PROJECT_ID"],
+                    credentials=self.google_auth.credentials()
+                )
+            return con
 
     def _execute_query_custom(self, query):
         client = self.connection()
