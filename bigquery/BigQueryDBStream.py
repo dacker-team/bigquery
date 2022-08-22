@@ -29,7 +29,6 @@ class BigQueryDBStream(dbstream.DBStream):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
-        self.ssh_init_port = 6543
         self.dataset_location = dataset_location
         self.tmp_folder_path = tmp_folder_path
         self.id_info = id_info
@@ -46,9 +45,6 @@ class BigQueryDBStream(dbstream.DBStream):
                 )
             except google.cloud.bigquery.dbapi.OperationalError:
                 time.sleep(2)
-                if self.ssh_tunnel:
-                    self.ssh_tunnel.close()
-                    self.create_tunnel()
                 con = google.cloud.bigquery.client.Client(
                     project=os.environ["BIG_QUERY_PROJECT_ID"],
                     credentials=self.google_auth.credentials()
