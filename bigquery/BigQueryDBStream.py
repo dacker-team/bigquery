@@ -25,28 +25,33 @@ class BigQueryDBStream(dbstream.DBStream):
                  dataset_location=None,
                  tmp_folder_path="./",
                  id_info='dck',
-                 custom_connection=None):
+                 custom_client=None,
+                 project_id=None):
         super().__init__(instance_name, client_id=client_id)
         self.instance_type_prefix = "BIGQ"
         self.google_auth = google_auth
         self.dataset_location = dataset_location
         self.tmp_folder_path = tmp_folder_path
         self.id_info = id_info
-        self.custom_connection = custom_connection
+        self.custom_client = custom_client
+        if project_id:
+            self.project_id = project_id
+        else:
+            self.project_id = os.environ["BIG_QUERY_PROJECT_ID"]
 
     def connection(self):
-        if self.custom_connection:
-            return self.custom_connection()
+        if self.custom_client:
+            return self.custom_client()
         else:
             try:
                 con = google.cloud.bigquery.client.Client(
-                    project=os.environ["BIG_QUERY_PROJECT_ID"],
+                    project=self.project_id,
                     credentials=self.google_auth.credentials()
                 )
             except google.cloud.bigquery.dbapi.OperationalError:
                 time.sleep(2)
                 con = google.cloud.bigquery.client.Client(
-                    project=os.environ["BIG_QUERY_PROJECT_ID"],
+                    project=self.project_id,
                     credentials=self.google_auth.credentials()
                 )
             return con
@@ -137,7 +142,7 @@ class BigQueryDBStream(dbstream.DBStream):
             write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND"
         )
 
-        table_id = os.environ["BIG_QUERY_PROJECT_ID"] + "." + data["table_name"]
+        table_id = f"{self.project_id}.{data['table_name']}"
 
         with open(tmp_csv_path, "rb") as source_file:
             job = client.load_table_from_file(source_file, table_id, job_config=job_config)
