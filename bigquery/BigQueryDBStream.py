@@ -3,6 +3,7 @@ import os
 import random
 import re
 import dbstream
+import datetime
 import time
 import google.cloud.bigquery
 import pandas as pd
@@ -188,6 +189,13 @@ class BigQueryDBStream(dbstream.DBStream):
                     data=data_copy,
                     other_table_to_update=other_table_to_update
                 )
+
+            elif ("could not parse " in error_lowercase and "timestamp" in error_lowercase):
+                #Extract postition of the column from error message
+                pos = int(error_lowercase.split('(position ')[1].split(')')[0])
+                for d in data_copy['rows']:
+                    if type(d[pos]) == str and len(d[pos]) == 10:
+                        d[pos] = datetime.datetime.fromisoformat(d[pos] + ' 00:00:00')
 
             elif "could not parse " in error_lowercase and "bool" in error_lowercase:
                 columns_type_bool_to_str(
