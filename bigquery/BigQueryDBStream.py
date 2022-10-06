@@ -194,7 +194,7 @@ class BigQueryDBStream(dbstream.DBStream):
                 #Extract postition of the column from error message
                 pos = int(error_lowercase.split('(position ')[1].split(')')[0])
                 for d in data_copy['rows']:
-                    if type(d[pos]) == str and len(d[pos]) == 10:
+                    if len(d[pos]) == 10:
                         d[pos] = datetime.datetime.fromisoformat(d[pos] + ' 00:00:00')
 
             elif "could not parse " in error_lowercase and "bool" in error_lowercase:
