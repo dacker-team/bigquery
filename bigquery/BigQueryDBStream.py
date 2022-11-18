@@ -182,6 +182,7 @@ class BigQueryDBStream(dbstream.DBStream):
             self._send(data, replace=replace, batch_size=batch_size)
         except Exception as e:
             error_lowercase = str(e).lower()
+            print(error_lowercase)
             if ("could not parse " in error_lowercase and "int64" in error_lowercase) \
                     or ("could not parse " in error_lowercase and "double" in error_lowercase):
                 change_columns_type(
@@ -191,17 +192,22 @@ class BigQueryDBStream(dbstream.DBStream):
                 )
 
             elif ("could not parse " in error_lowercase and "timestamp" in error_lowercase):
-                #Extract postition of the column from error message
+                # Extract postition of the column from error message
                 pos = int(error_lowercase.split('(position ')[1].split(')')[0])
                 for d in data_copy['rows']:
                     if len(d[pos]) == 10:
                         d[pos] = datetime.datetime.fromisoformat(d[pos] + ' 00:00:00')
 
             elif "could not parse " in error_lowercase and "bool" in error_lowercase:
+                try:
+                    position = int(error_lowercase.split("(position ")[1].split(")")[0])
+                except IndexError:
+                    position = None
                 columns_type_bool_to_str(
                     self,
                     data=data_copy,
-                    other_table_to_update=other_table_to_update
+                    other_table_to_update=other_table_to_update,
+                    position=position
                 )
             elif " not found:" in error_lowercase and (
                     " table " in error_lowercase or " dataset " in error_lowercase):

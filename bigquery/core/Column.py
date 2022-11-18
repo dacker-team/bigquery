@@ -58,20 +58,28 @@ def change_columns_type(_dbstream, data, other_table_to_update):
                     change_type(_dbstream, table_name=other_table_to_update, column_name=c, type="STRING")
 
 
-def columns_type_bool_to_str(_dbstream, data, other_table_to_update):
+def columns_type_bool_to_str(_dbstream, data, other_table_to_update, position=None):
     table_name = data["table_name"].split('.')
     columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
     rows = data["rows"]
     columns_name = data["columns_name"]
     df = pd.DataFrame(rows, columns=columns_name)
-
+    if position:
+        bool_to_str(_dbstream, table_name=data["table_name"], column_name=columns_name[position])
+        if other_table_to_update:
+            bool_to_str(_dbstream, table_name=other_table_to_update, column_name=columns_name[position])
+        return
+    a = 0
     for c in columns_name:
         example = find_sample_value(df, c, columns_name.index(c))[0]
         if isinstance(example, str):
             if columns_type.get(c) == "BOOL":
                 bool_to_str(_dbstream, table_name=data["table_name"], column_name=c)
+                a = a + 1
                 if other_table_to_update:
                     bool_to_str(_dbstream, table_name=other_table_to_update, column_name=c)
+    if a == 0:
+        raise Exception("Not found bool column to cast to string")
 
 
 def detect_type(_dbstream, name, example, types):
