@@ -8,6 +8,7 @@ bigquery.egg-info/
 *sandbox*
 ssh_path_private_key
 venv1/
+venv2/
 deploy.sh
 config/
 google

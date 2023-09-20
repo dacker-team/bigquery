@@ -85,7 +85,7 @@ class BigQueryDBStream(dbstream.DBStream):
             empty_list = []
             return empty_list
 
-    def _send(self, data, replace=True, batch_size=1000):
+    def _send(self, data, replace=True, time_partitioning_field=None):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
 
         if replace:
@@ -134,13 +134,17 @@ class BigQueryDBStream(dbstream.DBStream):
             SchemaField(name=c, field_type=params[c]["type"]) for c in params.keys()
         ]
 
+        time_partitioning = None
+        if time_partitioning_field:
+            time_partitioning = bigquery.table.TimePartitioning(field=time_partitioning_field)
         job_config = bigquery.LoadJobConfig(
             source_format=bigquery.SourceFormat.CSV,
             skip_leading_rows=1,
             schema=schema,
             autodetect=True,
             allow_quoted_newlines=True,
-            write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND"
+            write_disposition="WRITE_TRUNCATE" if replace else "WRITE_APPEND",
+            time_partitioning=time_partitioning
         )
 
         table_id = f"{self.project_id}.{data['table_name']}"
