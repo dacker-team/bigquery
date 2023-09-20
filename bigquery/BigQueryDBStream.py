@@ -85,7 +85,7 @@ class BigQueryDBStream(dbstream.DBStream):
             empty_list = []
             return empty_list
 
-    def _send(self, data, replace=True, time_partitioning_field=None):
+    def _send(self, data, replace=True, batch_size=None, time_partitioning_field=None):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
 
         if replace:
