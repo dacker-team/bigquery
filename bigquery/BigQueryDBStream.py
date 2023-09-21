@@ -172,7 +172,8 @@ class BigQueryDBStream(dbstream.DBStream):
                           replace=True,
                           batch_size=1000,
                           other_table_to_update=None,
-                          n=1
+                          n=1,
+                          time_partitioning_field=None
                           ):
         """
         data = {
@@ -183,7 +184,7 @@ class BigQueryDBStream(dbstream.DBStream):
         """
         data_copy = copy.deepcopy(data)
         try:
-            self._send(data, replace=replace, batch_size=batch_size)
+            self._send(data, replace=replace, batch_size=batch_size, time_partitioning_field=time_partitioning_field)
         except Exception as e:
             error_lowercase = str(e).lower()
             print(error_lowercase)
@@ -233,7 +234,8 @@ class BigQueryDBStream(dbstream.DBStream):
                 raise e
 
             self._send_data_custom(data_copy, replace=replace, batch_size=batch_size,
-                                   other_table_to_update=other_table_to_update, n=n)
+                                   other_table_to_update=other_table_to_update, n=n,
+                                   time_partitioning_field=time_partitioning_field)
 
     def clean(self, selecting_id, schema_prefix, table):
         print('trying to clean table %s.%s using %s' % (schema_prefix, table, selecting_id))
