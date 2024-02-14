@@ -144,9 +144,12 @@ def find_sample_value(df, name, i):
         df1 = df1.apply(lambda x: convert_to_bool(x))
     except:
         try:
-            df1 = df1.apply(lambda x: float(x))
+            df1 = df1.apply(lambda x: int(x))
         except:
-            pass
+            try:
+                df1 = df1.apply(lambda x: float(x))
+            except:
+                pass
     df1_copy = copy.deepcopy(df1)
     if df1.dtype == 'object':
         df1 = df1.apply(lambda x: (str(x.encode()) if isinstance(x, str) else x) if x is not None else '')
