@@ -189,7 +189,8 @@ class BigQueryDBStream(dbstream.DBStream):
             error_lowercase = str(e).lower()
             print(error_lowercase)
             if ("could not parse " in error_lowercase and "int64" in error_lowercase) \
-                    or ("could not parse " in error_lowercase and "double" in error_lowercase):
+                    or ("could not parse " in error_lowercase and "double" in error_lowercase) \
+                    or ("column_type: int" in error_lowercase):
                 change_columns_type(
                     self,
                     data=data_copy,
