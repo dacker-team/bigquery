@@ -107,7 +107,7 @@ class BigQueryDBStream(dbstream.DBStream):
         df = df.where((pd.notnull(df)), None)
 
         table_name = data["table_name"].split('.')
-        columns_type = get_columns_type(self, table_name=table_name[1], schema_name=table_name[0])
+        columns_type = get_columns_type(self, table_name=table_name[1], schema_name=table_name[0], types=data.get("types"))
 
         for i in range(len(columns_name)):
             name = columns_name[i]

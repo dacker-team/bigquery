@@ -4,11 +4,14 @@ import pandas as pd
 from bigquery.core.mapping_type import mapping_types
 
 
-def get_columns_type(_dbstream, schema_name, table_name):
+def get_columns_type(_dbstream, schema_name, table_name, types=None):
     d = {}
     r = _dbstream.get_data_type(table_name, schema_name)
     for i in r:
         d[i["column_name"]] = i["data_type"]
+    if types:
+        for k in types.keys():
+            d[k] = types[k]
     return d
 
 
@@ -39,7 +42,7 @@ def bool_to_str(_dbstream, table_name, column_name):
 
 def change_columns_type(_dbstream, data, other_table_to_update):
     table_name = data["table_name"].split('.')
-    columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
+    columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0], types=data.get("types"))
     rows = data["rows"]
     columns_name = data["columns_name"]
     df = pd.DataFrame(rows, columns=columns_name)
@@ -60,7 +63,7 @@ def change_columns_type(_dbstream, data, other_table_to_update):
 
 def columns_type_bool_to_str(_dbstream, data, other_table_to_update, position=None):
     table_name = data["table_name"].split('.')
-    columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0])
+    columns_type = get_columns_type(_dbstream, table_name=table_name[1], schema_name=table_name[0], types=data.get("types"))
     rows = data["rows"]
     columns_name = data["columns_name"]
     df = pd.DataFrame(rows, columns=columns_name)
