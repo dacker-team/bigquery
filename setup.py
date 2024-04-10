@@ -15,7 +15,7 @@ setup(
     packages=find_packages(exclude=('tests', 'docs')),
     python_requires='>=3',
     install_requires=[
-        "dbstream>=0.1.19",
+        "dbstream>=0.1.22",
         "google-cloud-bigquery>=2.4.0",
         "googleauthentication>=0.0.12",
         "google-cloud-bigquery-storage>=2.1.0",
