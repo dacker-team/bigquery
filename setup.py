@@ -5,7 +5,7 @@ with open('README.rst') as f:
 
 setup(
     name='bigquery',
-    version='0.0.41',
+    version='0.0.42',
     description='Easily send data to Big Query',
     long_description=readme,
     author='Dacker',
