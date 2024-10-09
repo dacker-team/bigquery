@@ -69,7 +69,9 @@ class BigQueryDBStream(dbstream.DBStream):
             raise e
         con.commit()
         try:
-            result = cursor.fetchall()
+            result = None
+            if "drop table" not in query.lower():
+                result = cursor.fetchall()
         except AttributeError:
             result = None
         except:
