@@ -175,7 +175,8 @@ class BigQueryDBStream(dbstream.DBStream):
                           batch_size=1000,
                           other_table_to_update=None,
                           n=1,
-                          time_partitioning_field=None
+                          time_partitioning_field=None,
+                          **kwargs
                           ):
         """
         data = {
