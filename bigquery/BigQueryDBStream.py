@@ -87,7 +87,7 @@ class BigQueryDBStream(dbstream.DBStream):
             empty_list = []
             return empty_list
 
-    def _send(self, data, replace=True, batch_size=None, time_partitioning_field=None):
+    def _send(self, data, replace=True, batch_size=None, time_partitioning_field=None, parse_dict=True):
         print(C.WARNING + "Initiate send_to_bigquery on table " + data["table_name"] + "..." + C.ENDC)
 
         if replace:
@@ -176,6 +176,7 @@ class BigQueryDBStream(dbstream.DBStream):
                           other_table_to_update=None,
                           n=1,
                           time_partitioning_field=None,
+                          parse_dict=True,
                           **kwargs
                           ):
         """
@@ -187,7 +188,7 @@ class BigQueryDBStream(dbstream.DBStream):
         """
         data_copy = copy.deepcopy(data)
         try:
-            self._send(data, replace=replace, batch_size=batch_size, time_partitioning_field=time_partitioning_field)
+            self._send(data, replace=replace, batch_size=batch_size, time_partitioning_field=time_partitioning_field, parse_dict=parse_dict)
         except Exception as e:
             error_lowercase = str(e).lower()
             print(error_lowercase)
@@ -239,7 +240,7 @@ class BigQueryDBStream(dbstream.DBStream):
 
             self._send_data_custom(data_copy, replace=replace, batch_size=batch_size,
                                    other_table_to_update=other_table_to_update, n=n,
-                                   time_partitioning_field=time_partitioning_field)
+                                   time_partitioning_field=time_partitioning_field, parse_dict=parse_dict)
 
     def clean(self, selecting_id, schema_prefix, table):
         print('trying to clean table %s.%s using %s' % (schema_prefix, table, selecting_id))
